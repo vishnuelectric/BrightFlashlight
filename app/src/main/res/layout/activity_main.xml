@@ -9,9 +9,41 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.vishnu.brightflashlight.MainActivity">
 
-    <TextView
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/ovalbackground"
-        android:text="Hello World!" />
+        android:orientation="horizontal"
+        android:layout_centerHorizontal="true">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/ovalbackground"
+            android:text="Blink Slow !"
+            android:id="@+id/blink_slow"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/ovalbackground"
+            android:id="@+id/blink_medium"
+            android:text="Blink Medium!" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/ovalbackground"
+            android:id="@+id/blink_fast"
+            android:text="Blink Fast!" />
+    </LinearLayout>
+
+
+    <TextView
+        android:layout_width="250dp"
+        android:layout_height="250dp"
+        android:background="@drawable/circle"
+android:gravity="center"
+        android:layout_centerInParent="true"
+        android:text="FLASH OFF"
+        android:textSize="43sp"
+        android:id="@+id/switch_on_off"
+        tools:text="FLASH OFF"/>
+
 </RelativeLayout>
