@@ -1,17 +1,24 @@
 package com.vishnu.brightflashlight;
 
+import android.app.AlertDialog;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.hardware.Camera;
+import android.hardware.camera2.CameraManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -40,6 +47,7 @@ public class MainActivity
     public Camera mCamera;
     public CameraPreview mPreview;
     Handler handler;
+    private boolean torchMode= false;
     TextView mSwitchOnOff, blinkSlow, blinkMedium, blinkFast;
     Runnable blinkRunnable;
     private boolean backCamera;
@@ -50,6 +58,10 @@ public class MainActivity
     private String timeStamp;
     private InterstitialAd mInterstitialAd;
     private AdRequest adRequest;
+    private TextView rate,getNotificationBlocker;
+    private TextView share;
+    private CameraManager cameraManager;
+    private SharedPreferences sharedPreferences;
 
     public static Uri getImageContentUri(Context context, File imageFile) {
         String filePath = imageFile.getAbsolutePath();
@@ -75,7 +87,9 @@ public class MainActivity
     }
 
     private void releaseCameraAndPreview() {
+        if(mPreview != null)
         this.mPreview.setCamera(null);
+
         if (mCamera != null) {
             mCamera.release();
             mCamera = null;
@@ -158,43 +172,95 @@ public class MainActivity
                 } else if (background instanceof ColorDrawable) {
                     ((ColorDrawable)background).setColor(getResources().getColor(R.color.colorToSet));
                 }*/
-                Camera.Parameters parameters = this.mCamera.getParameters();
-                blinker(4, 0, true);
-                if (parameters.getFlashMode().equalsIgnoreCase(Camera.Parameters.FLASH_MODE_OFF)) {
-                    parameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-                    this.mCamera.setParameters(parameters);
-                    ((GradientDrawable) background).setColor(getResources().getColor(R.color.colorPrimary));
-                    mSwitchOnOff.setTextColor(getResources().getColor(android.R.color.white));
-                    mSwitchOnOff.setText("FLASH ON");
-                    if(!mInterstitialAd.isLoaded())
-                        mInterstitialAd.loadAd(adRequest);
-                    return;
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                {
+                    try {
+                        blinker(4, 0, true);
+                        if(torchMode) {
+                            cameraManager.setTorchMode(cameraManager.getCameraIdList()[0], false);
+                            ((GradientDrawable) background).setColor(getResources().getColor(R.color.background_material_light));
+                            mSwitchOnOff.setTextColor(getResources().getColor(android.R.color.darker_gray));
+                            mSwitchOnOff.setText("FLASH OFF");
+                            torchMode=false;
+                        }
+                        else {
+                            cameraManager.setTorchMode(cameraManager.getCameraIdList()[0], true);
+                            ((GradientDrawable) background).setColor(getResources().getColor(R.color.colorPrimary));
+                            mSwitchOnOff.setTextColor(getResources().getColor(android.R.color.white));
+                            mSwitchOnOff.setText("FLASH ON");
+                            torchMode =true;
+                        }
+                        if (mInterstitialAd.isLoaded())
+                            mInterstitialAd.show();
+
+                        if (!mInterstitialAd.isLoaded())
+                            mInterstitialAd.loadAd(adRequest);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
-                parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
-                ((GradientDrawable) background).setColor(getResources().getColor(R.color.background_material_light));
-                mSwitchOnOff.setTextColor(getResources().getColor(android.R.color.darker_gray));
-                mSwitchOnOff.setText("FLASH OFF");
-                this.mCamera.setParameters(parameters);
-                if(mInterstitialAd.isLoaded())
-                    mInterstitialAd.show();
+                else {
+                    Camera.Parameters parameters = this.mCamera.getParameters();
+                    System.out.println(mCamera.getParameters().getSupportedFlashModes().contains("torch"));
+                    blinker(4, 0, true);
+                    if (parameters.getFlashMode().equalsIgnoreCase(Camera.Parameters.FLASH_MODE_OFF)) {
+                        parameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
 
-                if(!mInterstitialAd.isLoaded())
-                    mInterstitialAd.loadAd(adRequest);
+                        this.mCamera.setParameters(parameters);
+                        mCamera.startPreview();
+                        ((GradientDrawable) background).setColor(getResources().getColor(R.color.colorPrimary));
+                        mSwitchOnOff.setTextColor(getResources().getColor(android.R.color.white));
+                        mSwitchOnOff.setText("FLASH ON");
+                        if (!mInterstitialAd.isLoaded())
+                            mInterstitialAd.loadAd(adRequest);
+                        return;
+                    }
+                    parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+                    mCamera.stopPreview();
+                    ((GradientDrawable) background).setColor(getResources().getColor(R.color.background_material_light));
+                    mSwitchOnOff.setTextColor(getResources().getColor(android.R.color.darker_gray));
+                    mSwitchOnOff.setText("FLASH OFF");
+                    this.mCamera.setParameters(parameters);
+                    if (mInterstitialAd.isLoaded())
+                        mInterstitialAd.show();
+
+                    if (!mInterstitialAd.isLoaded())
+                        mInterstitialAd.loadAd(adRequest);
 
 
-                return;
+
+                }
+                break;
 
             case R.id.blink_slow:
-                Camera.Parameters parameters1 = this.mCamera.getParameters();
+
                 blinker(1, 1000, true);
                 return;
             case R.id.blink_medium:
-                Camera.Parameters parameters2 = this.mCamera.getParameters();
+
                 blinker(2, 500, true);
                 break;
             case R.id.blink_fast:
-                Camera.Parameters parameters3 = this.mCamera.getParameters();
+
                 blinker(3, 300, true);
+                break;
+            case R.id.share:
+                Intent intent = new Intent("android.intent.action.SEND");
+                intent.setType("text/plain");
+                intent.putExtra("android.intent.extra.SUBJECT", "Superb Bright Flashlight");
+                intent.putExtra("android.intent.extra.TEXT", "\nHey Download  this awesome app- Bright Flashlight to find your way in dark\n\n" + "https://play.google.com/store/apps/details?id=com.vishnu.brightflashlight \n\n");
+                MainActivity.this.startActivity(Intent.createChooser(intent, "choose one"));
+                break;
+            case R.id.rate:
+
+                    Intent intent1 = new Intent("android.intent.action.VIEW", Uri.parse("market://details?id=com.vishnu.brightflashlight"));
+                    MainActivity.this.startActivity(intent1);
+                    Toast.makeText(MainActivity.this,"Please Rate this app 5 star if you like it",Toast.LENGTH_LONG).show();
+                    break;
+            case R.id.notificationblocker:
+                Intent notificationBlockerIntent =  new Intent("android.intent.action.VIEW", Uri.parse("market://details?id=com.vishnu.notificationmanager"));
+                MainActivity.this.startActivity(notificationBlockerIntent);
+                break;
 
         }
 
@@ -204,7 +270,7 @@ public class MainActivity
     private void blinker(final int type, final int milisecs, boolean status) {
         switch (type) {
             case 1:
-                blinker(4,0,true);
+                blinker(4, 0, true);
                 ((GradientDrawable) mSwitchOnOff.getBackground()).setColor(getResources().getColor(R.color.colorPrimary));
                 mSwitchOnOff.setTextColor(getResources().getColor(android.R.color.white));
                 mSwitchOnOff.setText("FLASH ON");
@@ -235,30 +301,54 @@ public class MainActivity
 
         }
         handler.removeCallbacks(blinkRunnable);
-        blinkRunnable = new Runnable() {
-            Camera.Parameters parameters = mCamera.getParameters();
-            @Override
-            public void run() {
-                System.out.println(type);
-                parameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-                mCamera.setParameters(parameters);
-                try {
-                    synchronized (this){
-                        wait(100);
+        if(milisecs >0) {
+            blinkRunnable = new Runnable() {
+
+                Camera.Parameters parameters ;
+
+                @Override
+                public void run() {
+                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                    {
+                        try {
+                            cameraManager.setTorchMode(cameraManager.getCameraIdList()[0],true);
+                            torchMode =true;
+                            synchronized (this) {
+                                wait(100);
+                            }
+                            cameraManager.setTorchMode(cameraManager.getCameraIdList()[0],false);
+                            torchMode = false;
+                            handler.postDelayed(this, milisecs);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
+                    else {
+                        parameters = mCamera.getParameters();
+                        System.out.println(type);
+                        parameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+                        mCamera.setParameters(parameters);
+                        mCamera.startPreview();
+                        try {
+                            synchronized (this) {
+                                wait(100);
+                            }
 
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+                        mCamera.stopPreview();
+                        mCamera.setParameters(parameters);
+                        handler.postDelayed(this, milisecs);
+                    }
                 }
-                parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
-                mCamera.setParameters(parameters);
-                handler.postDelayed(this, milisecs);
-            }
-        };
+            };
 
-        if (milisecs > 0)// to switch off using main switch passing 0 millisecs
+
+            // to switch off using main switch passing 0 millisecs
             handler.postDelayed(blinkRunnable, milisecs);
-
+        }
 
     }
 
@@ -272,14 +362,18 @@ public class MainActivity
             cameraId = bundle.getInt("cameraid", 0);
         else
             cameraId = 0;
+        rate = (TextView)findViewById(R.id.rate);
+        share = (TextView)findViewById(R.id.share);
         mSwitchOnOff = (TextView) findViewById(R.id.switch_on_off);
-        mSwitchOnOff.setOnClickListener(this);
+
         blinkSlow = (TextView) findViewById(R.id.blink_slow);
-        blinkSlow.setOnClickListener(this);
+
         blinkMedium = (TextView) findViewById(R.id.blink_medium);
-        blinkMedium.setOnClickListener(this);
+
         blinkFast = (TextView) findViewById(R.id.blink_fast);
-        blinkFast.setOnClickListener(this);
+
+        getNotificationBlocker = (TextView) findViewById(R.id.notificationblocker);
+
         this.mInterstitialAd = new InterstitialAd(this);
         this.mInterstitialAd.setAdUnitId("ca-app-pub-7259770719293184/7305397557");
         adRequest = new AdRequest.Builder().addTestDevice("11EC09A99539249C285DEB0BE5451927").addTestDevice("EE2B081F3062102816D633EFAA98AFE8").build();
@@ -292,6 +386,25 @@ public class MainActivity
         gallery = (ImageView)findViewById(R.id.gallery);
         gallery.setOnClickListener(this);*/
         handler = new Handler(getMainLooper());
+       sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+       int opened = sharedPreferences.getInt("opened",0);
+        boolean rated = sharedPreferences.getBoolean("rated",false);
+
+        opened = opened +1;
+        sharedPreferences.edit().putInt("opened",opened).apply();
+        if(opened >3 && !rated)
+        {
+            new AlertDialog.Builder(this).setTitle("Rate this app").setMessage("Please Rate this app 5 star if you like it").setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    Intent intent1 = new Intent("android.intent.action.VIEW", Uri.parse("market://details?id=com.vishnu.brightflashlight"));
+                    MainActivity.this.startActivity(intent1);
+                    Toast.makeText(MainActivity.this, "Please Rate this app 5 star if you like it", Toast.LENGTH_LONG).show();
+               sharedPreferences.edit().putBoolean("rated",true).apply();
+                }
+            }).show();
+
+        }
 
 
     }
@@ -305,9 +418,19 @@ public class MainActivity
 public void onPause() {
 
         super.onPause();
-    blinker(4,0,true);
+    blinker(4, 0, true);
+if(Build.VERSION.SDK_INT < Build.VERSION_CODES.M)
+{
+    releaseCameraAndPreview();
+}
 
-        releaseCameraAndPreview();
+    rate.setOnClickListener(null);
+    share.setOnClickListener(null);
+    mSwitchOnOff.setOnClickListener(null);
+    blinkSlow.setOnClickListener(null);
+    blinkMedium.setOnClickListener(null);
+    blinkFast.setOnClickListener(null);
+    getNotificationBlocker.setOnClickListener(null);
         // ((FrameLayout)findViewById(R.id.frame)).removeView(this.mPreview);
     }
 
@@ -348,13 +471,59 @@ public void onPause() {
     @Override
     public void onResume() {
         super.onResume();
+        if(!this.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH))
+        {
+            Toast.makeText(this,"Flash not supported",Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+        {
+            try {
+                 cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
+                rate.setOnClickListener(this);
+                share.setOnClickListener(this);
+                mSwitchOnOff.setOnClickListener(this);
+                blinkSlow.setOnClickListener(this);
+                blinkMedium.setOnClickListener(this);
+                blinkFast.setOnClickListener(this);
+                getNotificationBlocker.setOnClickListener(this);
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+            return;
+        }
+
+
 
         this.mPreview = new CameraPreview(this, this.cameraId);
         //((FrameLayout)findViewById(R.id.frame)).addView(this.mPreview, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         if (safeCameraOpen(this.cameraId)) {
-            //this.mPreview.setCamera(this.mCamera);
+            this.mPreview.setCamera(this.mCamera);
+            if(mCamera.getParameters().getFlashMode() == null)
+            {
+                Toast.makeText(this,"Flash not supported",Toast.LENGTH_LONG);
+            }
+            else {
+                rate.setOnClickListener(this);
+                share.setOnClickListener(this);
+                mSwitchOnOff.setOnClickListener(this);
+                blinkSlow.setOnClickListener(this);
+                blinkMedium.setOnClickListener(this);
+                blinkFast.setOnClickListener(this);
+                getNotificationBlocker.setOnClickListener(this);
+            }
+
         }
-        this.mCamera.startPreview();
+        else
+        {
+            Toast.makeText(this,"Sorry Could not connect to camera. Please close other camera/flashlight apps or restart.",Toast.LENGTH_LONG).show();
+            Toast.makeText(this,"Sorry Could not connect to camera. Please close all camera/flashlight or restart.",Toast.LENGTH_LONG).show();
+
+        }
+
     }
 
     @Override

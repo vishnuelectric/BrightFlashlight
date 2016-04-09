@@ -1,5 +1,6 @@
 buildscript {
     repositories {
+        jcenter()
         maven { url 'https://maven.fabric.io/public' }
     }
 
@@ -11,6 +12,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'io.fabric'
 
 repositories {
+    jcenter()
     maven { url 'https://maven.fabric.io/public' }
 }
 
@@ -21,13 +23,9 @@ android {
 
     defaultConfig {
         applicationId "com.vishnu.brightflashlight"
-        minSdkVersion 14
+        minSdkVersion 10
         targetSdkVersion 23
-        versionCode 1
-        versionName "1.0"
-        manifestPlaceholders = [manifestApplicationId: "${applicationId}",
-                                onesignal_app_id: "9974f582-354f-4a1c-89ae-8cd73f2d0ffe",
-                                onesignal_google_project_number: "973034166022"]
+
     }
     buildTypes {
         release {
@@ -35,6 +33,30 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    productFlavors{
+        playstore{
+            applicationId "com.vishnu.brightflashlight"
+            versionCode 34
+            versionName "4.3"
+            manifestPlaceholders = [manifestApplicationId: "${applicationId}",
+                                    onesignal_app_id: "9974f582-354f-4a1c-89ae-8cd73f2d0ffe",
+                                    onesignal_google_project_number: "973034166022"]
+
+        }
+
+        amazon
+                {
+                   applicationId "com.vishnu.brightflashlight"
+                    versionCode 1
+                    versionName "1.0"
+                    manifestPlaceholders = [manifestApplicationId: "${applicationId}",
+                                            onesignal_app_id: "d6d1f127-29c6-490f-83a1-9c9380b818b6",
+                                            onesignal_google_project_number: "973034166022"]
+                }
+
+    }
+
 }
 
 dependencies {
